@@ -22,66 +22,26 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
-      - name: Unzip & Fix Project Settings
+      - name: Unzip & Fix Extension Source
         run: |
           # 1. Giải nén file zip
           unzip -o *.zip -d . || true
 
-          # 2. Chuyển code từ thư mục con ra ngoài thư mục gốc nếu có
+          # 2. Đưa code từ thư mục con ra ngoài thư mục gốc
           PROJECT_DIR=$(find . -maxdepth 3 -name "build.gradle.kts" -not -path "./build.gradle.kts" | head -n 1 | xargs -r dirname)
           if [ -n "$PROJECT_DIR" ] && [ "$PROJECT_DIR" != "." ]; then
-            echo "Di chuyển code từ $PROJECT_DIR..."
+            echo "Di chuyển code từ $PROJECT_DIR ra root..."
             cp -r $PROJECT_DIR/* . 2>/dev/null || true
             cp -r $PROJECT_DIR/.* . 2>/dev/null || true
           fi
 
-          # 3. Tạo settings.gradle.kts chuẩn tích hợp kho JitPack
-          cat << 'EOF' > settings.gradle.kts
-          pluginManagement {
-              repositories {
-                  google()
-                  mavenCentral()
-                  gradlePluginPortal()
-                  maven { setUrl("https://jitpack.io") }
-              }
-          }
+          # 3. Sửa lỗi cú pháp dir.name trong settings.gradle.kts gốc
+          if [ -f "settings.gradle.kts" ]; then
+            sed -i 's/dir\.name/it\.name/g' settings.gradle.kts
+          fi
 
-          dependencyResolutionManagement {
-              repositories {
-                  google()
-                  mavenCentral()
-                  maven { setUrl("https://jitpack.io") }
-              }
-          }
-
-          rootProject.name = "CloudstreamPlugins"
-
-          java.io.File(rootDir, ".").listFiles()?.forEach { dir ->
-              if (dir.isDirectory && java.io.File(dir, "build.gradle.kts").exists() && dir.name != "build") {
-                  include(":${dir.name}")
-              }
-          }
-          EOF
-
-          # 4. Tạo root build.gradle.kts tự nạp CloudStream Gradle Plugin
-          cat << 'EOF' > build.gradle.kts
-          buildscript {
-              repositories {
-                  google()
-                  mavenCentral()
-                  maven { setUrl("https://jitpack.io") }
-              }
-              dependencies {
-                  classpath("com.android.tools.build:gradle:8.2.2")
-                  classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.24")
-                  classpath("com.github.lagradost:cloudstream3-gradle:master-SNAPSHOT")
-              }
-          }
-
-          subprojects {
-              apply(plugin = "com.lagradost.cloudstream3")
-          }
-          EOF
+          # 4. Sửa lỗi Jitpack 401 (chuyển master-SNAPSHOT -> -SNAPSHOT)
+          find . -name "*.gradle.kts" -exec sed -i 's/master-SNAPSHOT/-SNAPSHOT/g' {} +
 
           # 5. Khởi tạo Gradle Wrapper 8.9 nếu thiếu
           if [ ! -f "gradlew" ]; then
