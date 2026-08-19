@@ -22,22 +22,41 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
-      - name: Unzip & Structure Project
+      - name: Unzip & Fix Project Settings
         run: |
-          # 1. Giải nén file zip
+          # 1. Giải nén zip
           unzip -o *.zip -d . || true
 
-          # 2. Chuyển code từ thư mục con ra ngoài thư mục gốc
-          PROJECT_DIR=$(find . -maxdepth 3 -name "settings.gradle.kts" -o -name "build.gradle.kts" | head -n 1 | xargs -r dirname)
+          # 2. Đưa code từ thư mục con ra gốc nếu bị lồng
+          PROJECT_DIR=$(find . -maxdepth 3 -name "build.gradle.kts" -not -path "./build.gradle.kts" | head -n 1 | xargs -r dirname)
           if [ -n "$PROJECT_DIR" ] && [ "$PROJECT_DIR" != "." ]; then
-            echo "Chuyển code từ $PROJECT_DIR ra thư mục gốc..."
+            echo "Di chuyển code từ $PROJECT_DIR..."
             cp -r $PROJECT_DIR/* . 2>/dev/null || true
             cp -r $PROJECT_DIR/.* . 2>/dev/null || true
           fi
 
-          # 3. Tạo gradlew 8.9 nếu thiếu
+          # 3. Tạo lại settings.gradle.kts chuẩn Kotlin DSL
+          cat << 'EOF' > settings.gradle.kts
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+
+          rootProject.name = "CloudstreamPlugins"
+
+          java.io.File(rootDir, ".").listFiles()?.forEach { dir ->
+              if (dir.isDirectory && java.io.File(dir, "build.gradle.kts").exists()) {
+                  include(":${dir.name}")
+              }
+          }
+          EOF
+
+          # 4. Tạo gradlew 8.9 nếu thiếu
           if [ ! -f "gradlew" ]; then
-            echo "Khởi tạo Gradle 8.9 Wrapper..."
+            echo "Tạo Gradle Wrapper..."
             gradle wrapper --gradle-version 8.9
           fi
 
