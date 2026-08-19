@@ -27,7 +27,7 @@ jobs:
           # 1. Giải nén file zip
           unzip -o *.zip -d . || true
 
-          # 2. Tìm thư mục chứa dự án và chuyển ra thư mục gốc
+          # 2. Chuyển code từ thư mục con ra ngoài thư mục gốc
           PROJECT_DIR=$(find . -maxdepth 3 -name "settings.gradle.kts" -o -name "build.gradle.kts" | head -n 1 | xargs -r dirname)
           if [ -n "$PROJECT_DIR" ] && [ "$PROJECT_DIR" != "." ]; then
             echo "Chuyển code từ $PROJECT_DIR ra thư mục gốc..."
@@ -35,9 +35,9 @@ jobs:
             cp -r $PROJECT_DIR/.* . 2>/dev/null || true
           fi
 
-          # 3. Tự tạo gradlew 8.9 nếu file zip thiếu
-          if [ ! -f "gradlew" ]; me
-            echo "Không thấy gradlew, đang tự khởi tạo Gradle 8.9 Wrapper..."
+          # 3. Tạo gradlew 8.9 nếu thiếu
+          if [ ! -f "gradlew" ]; then
+            echo "Khởi tạo Gradle 8.9 Wrapper..."
             gradle wrapper --gradle-version 8.9
           fi
 
