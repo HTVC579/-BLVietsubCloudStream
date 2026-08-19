@@ -16,6 +16,13 @@ jobs:
       - name: Unzip Extension Source
         run: |
           unzip -o *.zip -d . || true
+          if [ ! -f "gradlew" ]; then
+            SUBDIR=$(find . -mindepth 2 -maxdepth 2 -name "gradlew" | head -n 1 | xargs dirname)
+            if [ -n "$SUBDIR" ]; then
+              cp -r $SUBDIR/* . 2>/dev/null || true
+              cp -r $SUBDIR/.* . 2>/dev/null || true
+            fi
+          fi
           chmod +x gradlew || true
 
       - name: Set up JDK 17
